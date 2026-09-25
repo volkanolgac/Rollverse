@@ -124,6 +124,7 @@ export class GameEngine {
   private pointerLastX = 0;
   private pointerStartY = 0;
   private pointerDragY = 0;
+  private lastTapTime = 0;
   private sensitivity = 1.0;
 
   // Level & Victory State
@@ -554,6 +555,14 @@ export class GameEngine {
     this.pointerLastX = e.clientX;
     this.pointerStartY = e.clientY;
     this.pointerDragY = 0;
+
+    // Detect double-tap / double-click (tap-tap) anywhere on screen to trigger jump
+    const now = performance.now();
+    if (now - this.lastTapTime < 320 && now - this.lastTapTime > 30) {
+      this.triggerJump();
+    }
+    this.lastTapTime = now;
+
     const dom = this.renderer.domElement;
     const rect = dom.getBoundingClientRect();
     const midX = rect.left + rect.width / 2;
