@@ -1,0 +1,8 @@
+{
+  "name": "Rollverse v2",
+  "description": "An evolving, endless rolling adventure where your choices and collected energy dynamically shape the path ahead.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
