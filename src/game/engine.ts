@@ -120,6 +120,7 @@ export class GameEngine {
   private virtualBackward = false;
   private pointerSteer: 'none' | 'left' | 'right' = 'none';
   private isPointerActive = false;
+  private pointerStartX = 0;
   private pointerLastX = 0;
   private pointerStartY = 0;
   private pointerDragY = 0;
@@ -556,6 +557,8 @@ export class GameEngine {
     const dom = this.renderer.domElement;
     const rect = dom.getBoundingClientRect();
     const midX = rect.left + rect.width / 2;
+    
+    // Smooth touch steering based on screen side tap/hold
     if (e.clientX < midX) {
       this.pointerSteer = 'left';
       this.roadMemory.recordMovement('left');
@@ -567,16 +570,19 @@ export class GameEngine {
 
   private onPointerMove = (e: PointerEvent) => {
     if (!this.isPointerActive) return;
+    this.pointerDragY = this.pointerStartY - e.clientY;
     const diffX = e.clientX - this.pointerLastX;
     this.pointerLastX = e.clientX;
-    this.pointerDragY = this.pointerStartY - e.clientY;
 
-    if (Math.abs(diffX) > 1.0) {
-      this.pointerSteer = diffX < 0 ? 'left' : 'right';
-      const dom = this.renderer.domElement;
-      const rect = dom.getBoundingClientRect();
-      const lateralDelta = (diffX / (rect.width || window.innerWidth)) * 24.0 * this.sensitivity;
-      this.ballPos.x -= lateralDelta;
+    // Instant frame-by-frame finger drag tracking for natural 1:1 control
+    if (Math.abs(diffX) > 1.2) {
+      if (diffX < 0) {
+        this.pointerSteer = 'left';
+        this.roadMemory.recordMovement('left');
+      } else {
+        this.pointerSteer = 'right';
+        this.roadMemory.recordMovement('right');
+      }
     }
   };
 
@@ -812,24 +818,24 @@ export class GameEngine {
       this.runState.abilityCooldownLeft = Math.max(0, this.runState.abilityCooldownLeft - dt);
     }
 
-    // 2. Responsive Horizontal Steering (Immediate traction + clean braking)
-    const steerSpeed = 24.0 * this.sensitivity;
+    // 2. Ultra-Smooth Precision Steering (Gentle relaxed movement for mobile touch control)
+    const steerSpeed = 3.6 * this.sensitivity;
     const isSteeringLeft = this.keyLeft || this.virtualLeft || this.pointerSteer === 'left';
     const isSteeringRight = this.keyRight || this.virtualRight || this.pointerSteer === 'right';
 
     let targetVelX = 0;
     if (isSteeringRight && !isSteeringLeft) {
-      targetVelX = -steerSpeed; // Decreases world X -> moves ball to screen RIGHT!
+      targetVelX = -steerSpeed; // Moves ball to screen RIGHT
     } else if (isSteeringLeft && !isSteeringRight) {
-      targetVelX = steerSpeed; // Increases world X -> moves ball to screen LEFT!
+      targetVelX = steerSpeed; // Moves ball to screen LEFT
     }
 
     if (targetVelX !== 0) {
-      // Rapid acceleration into turn for snappy arcade feel
-      this.ballVelX = THREE.MathUtils.damp(this.ballVelX, targetVelX, 22, dt);
+      // Gentle, gradual acceleration into turn
+      this.ballVelX = THREE.MathUtils.damp(this.ballVelX, targetVelX, 6.0, dt);
     } else {
-      // Prompt deceleration when input released - no ice skating drift
-      this.ballVelX = THREE.MathUtils.damp(this.ballVelX, 0, 28, dt);
+      // Smooth deceleration when input released
+      this.ballVelX = THREE.MathUtils.damp(this.ballVelX, 0, 12.0, dt);
       if (Math.abs(this.ballVelX) < 0.05) this.ballVelX = 0;
     }
 
